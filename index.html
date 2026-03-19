@@ -15,8 +15,6 @@
     .upload-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; background: #fff; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
     .upload-zone:hover { background: #f9f9f9; }
     .upload-zone.has-image { border-style: solid; border-color: #1e7e34; background: #e6f4ea; }
-
-
     .upload-zone img { display: none; }
     .upload-zone.has-image .upload-prompt { display: none; }
     .upload-zone .success-msg { display: none; flex-direction: column; align-items: center; gap: 6px; }
@@ -59,7 +57,6 @@
     <h1>📄 Receipt scanner</h1>
     <p>Upload up to 2 photos of a receipt and save to Google Sheets</p>
   </div>
-
   <div class="setup-section" id="setupSection" style="display:none;">
     <h2>Settings</h2>
     <div class="setup-field">
@@ -77,9 +74,7 @@
     <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
   </div>
   <span class="toggle-setup" onclick="toggleSetup()">⚙️ Settings</span>
-
   <div style="height: 1.5rem;"></div>
-
   <div class="upload-row">
     <div>
       <div class="photo-label">Photo 1 (required)</div>
@@ -106,16 +101,12 @@
       </div>
     </div>
   </div>
-
-  <input type="file" id="fileInput1" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,1)" title="Upload" />
-  <input type="file" id="fileInput2" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,2)" title="Upload" />
-
+  <input type="file" id="fileInput1" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,1)" />
+  <input type="file" id="fileInput2" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,2)" />
   <div class="actions">
     <button class="btn btn-primary" id="scanBtn" onclick="scanReceipt()" disabled>Scan receipt</button>
   </div>
-
   <div class="status" id="status"></div>
-
   <div class="results-card" id="resultsCard">
     <h2>Extracted details</h2>
     <div id="fieldsContainer"></div>
@@ -125,7 +116,6 @@
     </div>
   </div>
 </div>
-
 <script>
 const FIELDS = [
   { key: 'store_name', label: 'Store' },
@@ -134,11 +124,9 @@ const FIELDS = [
   { key: 'total', label: 'Total ($)' },
   { key: 'items', label: 'Items' },
 ];
-
 let images = [null, null];
 let mimeTypes = ['image/jpeg', 'image/jpeg'];
 let accessToken = null;
-
 function getSettings() {
   return {
     anthropicKey: localStorage.getItem('anthropicKey') || '',
@@ -146,7 +134,6 @@ function getSettings() {
     sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
   };
 }
-
 function saveSettings() {
   localStorage.setItem('anthropicKey', document.getElementById('anthropicKey').value.trim());
   localStorage.setItem('googleClientId', document.getElementById('googleClientId').value.trim());
@@ -154,7 +141,6 @@ function saveSettings() {
   toggleSetup();
   setStatus('Settings saved!', 'success');
 }
-
 function toggleSetup() {
   const s = document.getElementById('setupSection');
   const visible = s.style.display !== 'none';
@@ -166,7 +152,6 @@ function toggleSetup() {
   }
   s.style.display = visible ? 'none' : 'block';
 }
-
 function handleFile(e, num) {
   const file = e.target.files[0];
   if (!file) return;
@@ -175,7 +160,7 @@ function handleFile(e, num) {
   reader.onload = function(ev) {
     const img = new Image();
     img.onerror = function() {
-      setStatus('This image format is not supported in Chrome. Please convert to JPG first, or use Safari.', 'error');
+      setStatus('This image format is not supported in Chrome. Please use Safari or convert to JPG first.', 'error');
       document.getElementById('fileInput' + num).value = '';
     };
     img.onload = function() {
@@ -204,13 +189,11 @@ function handleFile(e, num) {
   };
   reader.readAsDataURL(file);
 }
-
 function setStatus(msg, type) {
   const el = document.getElementById('status');
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
-
 async function scanReceipt() {
   if (!images[0]) return;
   const cfg = getSettings();
@@ -218,13 +201,11 @@ async function scanReceipt() {
   document.getElementById('scanBtn').disabled = true;
   setStatus('Reading receipt with AI...', 'info');
   document.getElementById('resultsCard').style.display = 'none';
-
   try {
     const content = [];
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
     content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD), total (number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
-
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -246,7 +227,6 @@ async function scanReceipt() {
     document.getElementById('scanBtn').disabled = false;
   }
 }
-
 function showResults(data) {
   const container = document.getElementById('fieldsContainer');
   container.innerHTML = '';
@@ -258,13 +238,11 @@ function showResults(data) {
   });
   document.getElementById('resultsCard').style.display = 'block';
 }
-
 function getEditedData() {
   const out = {};
   FIELDS.forEach(f => { out[f.key] = document.getElementById('field_' + f.key)?.value || ''; });
   return out;
 }
-
 async function saveToSheets() {
   const cfg = getSettings();
   const btn = event.target;
@@ -293,7 +271,6 @@ async function saveToSheets() {
     btn.disabled = false;
   }
 }
-
 async function ensureHeader(token, sheetId) {
   const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1:E1`, { headers: { 'Authorization': 'Bearer ' + token } });
   const data = await res.json();
@@ -305,7 +282,6 @@ async function ensureHeader(token, sheetId) {
     });
   }
 }
-
 function getGoogleToken(clientId) {
   return new Promise((resolve, reject) => {
     if (typeof google === 'undefined') { reject(new Error('Google API not loaded')); return; }
@@ -320,7 +296,6 @@ function getGoogleToken(clientId) {
     client.requestAccessToken({ prompt: 'consent' });
   });
 }
-
 function resetApp() {
   images = [null, null];
   [1,2].forEach(n => {
