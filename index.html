@@ -21,7 +21,6 @@
     .upload-zone.has-image .success-msg { display: flex; }
     .success-icon { font-size: 28px; }
     .success-text { font-size: 13px; font-weight: 500; color: #1e7e34; }
-    .success-sub { font-size: 11px; color: #2d9e4a; }
     .upload-icon { font-size: 28px; margin-bottom: 6px; }
     .upload-label { font-size: 13px; font-weight: 500; }
     .upload-sub { font-size: 11px; color: #888; margin-top: 3px; }
@@ -85,7 +84,7 @@
           <div class="upload-sub">JPG, PNG, HEIC, HEIF</div>
         </div>
         <img id="previewImg1" alt="" />
-        <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo uploaded</div><div class="success-sub">Click to change</div></div>
+        <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo uploaded</div></div>
       </div>
     </div>
     <div>
@@ -97,7 +96,7 @@
           <div class="upload-sub">For long receipts</div>
         </div>
         <img id="previewImg2" alt="" />
-        <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo uploaded</div><div class="success-sub">Click to change</div></div>
+        <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo uploaded</div></div>
       </div>
     </div>
   </div>
@@ -127,6 +126,16 @@ const FIELDS = [
 let images = [null, null];
 let mimeTypes = ['image/jpeg', 'image/jpeg'];
 let accessToken = null;
+function getCachedToken() {
+  const t = sessionStorage.getItem('gToken');
+  const exp = sessionStorage.getItem('gTokenExp');
+  if (t && exp && Date.now() < parseInt(exp)) return t;
+  return null;
+}
+function setCachedToken(token) {
+  sessionStorage.setItem('gToken', token);
+  sessionStorage.setItem('gTokenExp', Date.now() + 55 * 60 * 1000);
+}
 function getSettings() {
   return {
     anthropicKey: localStorage.getItem('anthropicKey') || '',
@@ -248,8 +257,12 @@ async function saveToSheets() {
   const btn = event.target;
   btn.disabled = true;
   setStatus('Connecting to Google...', 'info');
+  if (!accessToken) accessToken = getCachedToken();
   if (!accessToken) {
-    try { accessToken = await getGoogleToken(cfg.googleClientId); }
+    try {
+      accessToken = await getGoogleToken(cfg.googleClientId);
+      setCachedToken(accessToken);
+    }
     catch(e) { setStatus('Google sign-in failed or was cancelled.', 'error'); btn.disabled = false; return; }
   }
   const d = getEditedData();
@@ -268,6 +281,8 @@ async function saveToSheets() {
   } catch(e) {
     setStatus('Failed to save. Try signing in again.', 'error');
     accessToken = null;
+    sessionStorage.removeItem('gToken');
+    sessionStorage.removeItem('gTokenExp');
     btn.disabled = false;
   }
 }
@@ -293,7 +308,7 @@ function getGoogleToken(clientId) {
         resolve(response.access_token);
       }
     });
-    client.requestAccessToken({ prompt: 'consent' });
+    client.requestAccessToken({});
   });
 }
 function resetApp() {
