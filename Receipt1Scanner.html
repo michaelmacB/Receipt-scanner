@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt Scanner</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(160deg, #f0fdf4 0%, #f7fef9 50%, #ecfdf5 100%); min-height: 100vh; color: #1a1a1a; }
+
+    /* HEADER */
+    .header { padding: 1.5rem 1.25rem 1rem; display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #166534; background: #0a0a0a; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .logo { width: 48px; height: 48px; flex-shrink: 0; }
+    .header-text h1 { font-family: 'Bebas Neue', sans-serif; font-size: 34px; letter-spacing: 4px; line-height: 1; background: linear-gradient(180deg, #bbf7d0 0%, #4ade80 30%, #16a34a 55%, #4ade80 80%, #86efac 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; -webkit-text-stroke: 1px rgba(74,222,128,0.4); filter: drop-shadow(0 0 6px rgba(74,222,128,0.8)) drop-shadow(1px 1px 0px #052e16); }
+    .tagline { font-size: 11px; color: #4ade80; font-weight: 600; letter-spacing: 1.5px; margin-top: 3px; }
+
+    /* SETTINGS gear fixed bottom right */
+    .settings-btn { position: fixed; bottom: 1rem; right: 1rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 100; gap: 2px; } .settings-btn .gear { background: #e5e7eb; border: none; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); } .settings-btn .gear:hover { background: #d1d5db; } .settings-btn .gear-label { font-size: 9px; font-weight: 700; color: #9ca3af; letter-spacing: 1px; text-transform: uppercase; }
+    .setup-section { background: #fff; border: 2px solid #bbf7d0; border-radius: 16px; padding: 1.25rem; margin: 0 1rem 1rem; display: none; }
+    .setup-section h2 { font-size: 15px; font-weight: 700; margin-bottom: 1rem; color: #16a34a; }
+    .setup-field { margin-bottom: 12px; }
+    .setup-field label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600; }
+    .setup-field input { width: 100%; padding: 9px 12px; border: 1.5px solid #bbf7d0; border-radius: 8px; font-size: 13px; background: #dcfce7; color: #1a1a1a; }
+    .setup-field input:focus { outline: none; border-color: #16a34a; }
+
+    /* MAIN */
+    .app { max-width: 480px; margin: 0 auto; padding: 1.25rem 1rem 6rem; }
+
+    /* INFO CARDS */
+    .info-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+    .info-card { background: #fff; border: 2px solid #bbf7d0; border-radius: 14px; padding: 0.9rem 1rem; }
+    .info-card-title { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #16a34a; text-transform: uppercase; margin-bottom: 6px; }
+    .info-card-body { font-size: 12px; color: #444; font-weight: 500; line-height: 1.5; }
+    .info-card-body strong { color: #16a34a; font-weight: 800; }
+    .two-photo-card { background: #fef9c3; border: 2px solid #fde047; border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px; }
+    .two-photo-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+    .two-photo-text { font-size: 13px; font-weight: 700; color: #854d0e; line-height: 1.4; }
+    .two-photo-text span { font-weight: 500; color: #713f12; display: block; font-size: 12px; margin-top: 2px; }
+
+    /* UPLOAD */
+    .upload-zone { border: 2.5px dashed #86efac; border-radius: 16px; padding: 1.75rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s; background: #fff; margin-bottom: 0.75rem; }
+    .upload-zone:hover { border-color: #16a34a; background: #dcfce7; }
+    .upload-zone.has-image { border-color: #16a34a; border-style: solid; background: #dcfce7; }
+    .upload-zone img { display: none; }
+    .upload-zone.has-image .upload-prompt { display: none; }
+    .upload-zone .success-msg { display: none; flex-direction: column; align-items: center; gap: 6px; }
+    .upload-zone.has-image .success-msg { display: flex; }
+    .upload-icon { font-size: 34px; margin-bottom: 8px; }
+    .upload-label { font-size: 16px; font-weight: 700; color: #16a34a; }
+    .upload-sub { font-size: 12px; color: #888; margin-top: 4px; }
+    .success-icon { font-size: 30px; }
+    .success-text { font-size: 14px; font-weight: 700; color: #16a34a; }
+    .photo2-trigger { font-size: 13px; color: #16a34a; font-weight: 700; cursor: pointer; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 6px; background: #fff; border: 2px solid #86efac; border-radius: 10px; padding: 10px; }
+    .photo2-trigger:hover { background: #dcfce7; }
+    .upload-zone2-wrap { display: none; margin-bottom: 0.75rem; }
+    .upload-zone2-wrap.visible { display: block; }
+    .zone2-label { font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; border-radius: 12px; border: 2px solid #bbf7d0; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; background: #fff; color: #16a34a; width: 100%; margin-bottom: 0.75rem; }
+    .btn:hover { background: #dcfce7; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-primary { background: #15803d; color: #fff; border-color: #16a34a; font-size: 16px; padding: 16px; box-shadow: 0 4px 18px rgba(21,128,61,0.4); }
+    .btn-primary:hover { background: #166534; }
+    .btn-save { background: #15803d; color: #fff; border-color: #16a34a; }
+    .btn-save:hover { background: #166534; }
+
+    /* STATUS */
+    .status { font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-bottom: 0.75rem; display: none; font-weight: 600; }
+    .status.info { background: #dbeafe; color: #1d4ed8; display: block; }
+    .status.success { background: #dcfce7; color: #16a34a; display: block; }
+    .status.error { background: #fee2e2; color: #dc2626; display: block; }
+
+    /* COURTROOM IMAGE */
+    .courtroom-wrap { margin: 1.25rem 0; border-radius: 18px; overflow: hidden; border: 2px solid #bbf7d0; box-shadow: 0 4px 20px rgba(21,128,61,0.1); }
+    .courtroom-svg { width: 100%; display: block; }
+
+    /* RESULTS */
+    .results-card { background: #fff; border: 2px solid #bbf7d0; border-radius: 16px; padding: 1.25rem; margin-bottom: 0.75rem; display: none; }
+    .results-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 1rem; color: #16a34a; }
+    .field { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #dcfce7; gap: 12px; }
+    .field:last-child { border-bottom: none; }
+    .field-label { font-size: 13px; color: #666; min-width: 90px; font-weight: 600; }
+    .field-value input { font-size: 13px; font-weight: 600; text-align: right; border: 1.5px solid #bbf7d0; border-radius: 6px; padding: 5px 8px; background: #dcfce7; color: #1a1a1a; min-width: 160px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="48" height="48" rx="12" fill="#dcfce7"/>
+    <path d="M12 8 L12 40 L36 40 L36 8 Z" fill="#fff" stroke="#16a34a" stroke-width="1.5"/>
+    <path d="M17 14 L31 14" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M17 19 L31 19" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M17 24 L26 24" stroke="#86efac" stroke-width="2" stroke-linecap="round"/>
+    <path d="M17 29 L24 29" stroke="#86efac" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="34" cy="34" r="9" fill="#16a34a"/>
+    <path d="M30 34 L33 37 L38 30" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="header-text">
+    <h1>Receipt Scanner</h1>
+    <div class="tagline">Upload your Receipts — <span style="color:#86efac;">to Google Sheets</span></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="setup-section" id="setupSection">
+  <h2>⚙️ Settings</h2>
+  <div class="setup-field"><label>Anthropic API Key</label><input type="password" id="anthropicKey" placeholder="sk-ant-..." /></div>
+  <div class="setup-field"><label>Google Client ID</label><input type="text" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" /></div>
+  <div class="setup-field"><label>Google Sheet ID</label><input type="text" id="sheetId" placeholder="Sheet ID from the URL" /></div>
+  <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+</div>
+
+<div class="app">
+
+  <!-- INFO CARDS -->
+  <div class="info-cards">
+    <div class="info-card">
+      <div class="info-card-title">📋 What gets saved</div>
+      <div class="info-card-body"><strong>Store · Date</strong><br>Price · Items<br>Category</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">⚡ How it works</div>
+      <div class="info-card-body">Snap or upload<br>AI reads it<br>Review &amp; edit<br><strong>Then save!</strong></div>
+    </div>
+  </div>
+
+  <!-- TWO PHOTO NOTICE -->
+  <div class="two-photo-card">
+    <div class="two-photo-icon">📸</div>
+    <div class="two-photo-text">
+      Long receipt? Use TWO photos!
+      <span>Tap "+ Add second photo" below after your first upload to capture the rest of the receipt.</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD ZONE 1 -->
+  <div class="upload-zone" id="uploadZone1" onclick="document.getElementById('fileInput1').click()">
+    <div class="upload-prompt">
+      <div class="upload-icon">📷</div>
+      <div class="upload-label">Take a photo or upload</div>
+      <div class="upload-sub">JPG · PNG · HEIC · HEIF</div>
+    </div>
+    <img id="previewImg1" alt="" />
+    <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 1 ready!</div></div>
+  </div>
+
+  <input type="file" id="fileInput1" accept="image/*,.heif,.heic" capture="environment" style="display:none;" onchange="handleFile(event,1)" />
+  <input type="file" id="fileInput2" accept="image/*,.heif,.heic" capture="environment" style="display:none;" onchange="handleFile(event,2)" />
+
+  <div class="photo2-trigger" id="photo2Trigger" onclick="showZone2()">
+    <span>📄</span> + Add second photo for long receipts
+  </div>
+
+  <div class="upload-zone2-wrap" id="zone2Wrap">
+    <div class="zone2-label">📄 Photo 2 — rest of receipt</div>
+    <div class="upload-zone" id="uploadZone2" onclick="document.getElementById('fileInput2').click()">
+      <div class="upload-prompt">
+        <div class="upload-icon">📷</div>
+        <div class="upload-label">Take a photo or upload</div>
+        <div class="upload-sub">Second part of receipt</div>
+      </div>
+      <img id="previewImg2" alt="" />
+      <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 2 ready!</div></div>
+    </div>
+  </div>
+
+  <!-- SCAN BUTTON -->
+  <button class="btn btn-primary" id="scanBtn" onclick="scanReceipt()" disabled>🔍 Scan Receipt</button>
+
+  <div class="status" id="status"></div>
+
+  <!-- COURTROOM ILLUSTRATION -->
+  <div class="courtroom-wrap">
+    <svg class="courtroom-svg" viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg">
+      <!-- Background - warm courtroom -->
+      <rect width="480" height="220" fill="#fef3c7"/>
+      <!-- Wood paneling back wall -->
+      <rect width="480" height="140" fill="#d97706" opacity="0.15"/>
+      <rect width="480" height="8" y="135" fill="#92400e" opacity="0.3"/>
+      <!-- Floor -->
+      <rect y="178" width="480" height="42" fill="#fde68a" opacity="0.6"/>
+      <rect y="175" width="480" height="5" fill="#d97706" opacity="0.4"/>
+
+      <!-- Judge's bench (big raised platform) -->
+      <rect x="140" y="80" width="200" height="100" rx="4" fill="#92400e" opacity="0.9"/>
+      <rect x="145" y="75" width="190" height="15" rx="3" fill="#78350f"/>
+      <rect x="148" y="78" width="184" height="8" rx="2" fill="#a16207" opacity="0.5"/>
+      <!-- Bench front panel detail -->
+      <rect x="155" y="95" width="60" height="70" rx="2" fill="#7c2d12" opacity="0.4"/>
+      <rect x="265" y="95" width="60" height="70" rx="2" fill="#7c2d12" opacity="0.4"/>
+
+      <!-- Judge figure -->
+      <!-- Robe body -->
+      <ellipse cx="240" cy="68" rx="28" ry="35" fill="#1c1917"/>
+      <!-- White collar -->
+      <path d="M225 50 Q240 58 255 50 L252 62 Q240 70 228 62 Z" fill="#f5f5f4"/>
+      <!-- Head -->
+      <circle cx="240" cy="38" r="18" fill="#fbbf24" opacity="0.9"/>
+      <!-- White wig -->
+      <ellipse cx="240" cy="26" rx="20" ry="12" fill="#f5f5f4"/>
+      <rect x="220" y="26" width="8" height="18" rx="4" fill="#f5f5f4"/>
+      <rect x="252" y="26" width="8" height="18" rx="4" fill="#f5f5f4"/>
+      <!-- Face -->
+      <circle cx="234" cy="38" r="2" fill="#44403c"/>
+      <circle cx="246" cy="38" r="2" fill="#44403c"/>
+      <path d="M235 44 Q240 48 245 44" stroke="#44403c" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <!-- Stern eyebrows -->
+      <path d="M231 34 L237 36" stroke="#44403c" stroke-width="2" stroke-linecap="round"/>
+      <path d="M243 36 L249 34" stroke="#44403c" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- MALLET / GAVEL -->
+      <!-- Handle -->
+      <rect x="258" y="44" width="8" height="45" rx="4" fill="#92400e" transform="rotate(-35 262 67)"/>
+      <!-- Head -->
+      <rect x="252" y="26" width="40" height="18" rx="5" fill="#78350f" transform="rotate(-35 272 35)"/>
+      <rect x="254" y="28" width="36" height="8" rx="3" fill="#a16207" transform="rotate(-35 272 32)" opacity="0.6"/>
+
+      <!-- Sound block on bench -->
+      <rect x="275" y="68" width="30" height="10" rx="3" fill="#78350f"/>
+      <rect x="278" y="71" width="24" height="4" rx="1" fill="#a16207" opacity="0.5"/>
+
+      <!-- Impact lines from mallet -->
+      <line x1="268" y1="60" x2="256" y2="50" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+      <line x1="272" y1="55" x2="265" y2="43" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+      <line x1="265" y1="63" x2="250" y2="57" stroke="#dc2626" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+
+      <!-- Receipt on bench -->
+      <rect x="175" y="62" width="55" height="70" rx="3" fill="#fff" stroke="#d1d5db" stroke-width="1"/>
+      <!-- Receipt lines -->
+      <line x1="182" y1="72" x2="223" y2="72" stroke="#e5e7eb" stroke-width="1.5"/>
+      <line x1="182" y1="79" x2="223" y2="79" stroke="#e5e7eb" stroke-width="1.5"/>
+      <line x1="182" y1="86" x2="215" y2="86" stroke="#e5e7eb" stroke-width="1"/>
+      <line x1="182" y1="93" x2="218" y2="93" stroke="#e5e7eb" stroke-width="1"/>
+      <line x1="182" y1="100" x2="223" y2="100" stroke="#16a34a" stroke-width="2"/>
+      <text x="202" y="113" font-family="monospace" font-size="10" fill="#15803d" text-anchor="middle" font-weight="bold">$183.47</text>
+      <!-- PAID stamp on receipt -->
+      <rect x="178" y="118" width="46" height="16" rx="3" fill="none" stroke="#dc2626" stroke-width="2" opacity="0.8" transform="rotate(-8 201 126)"/>
+      <text x="201" y="129" font-family="Arial Black" font-size="9" fill="#dc2626" text-anchor="middle" font-weight="900" transform="rotate(-8 201 126)">TRACKED</text>
+
+      <!-- Left side - spectator silhouettes -->
+      <ellipse cx="45" cy="165" rx="18" ry="22" fill="#44403c" opacity="0.5"/>
+      <circle cx="45" cy="138" r="10" fill="#44403c" opacity="0.5"/>
+      <ellipse cx="85" cy="168" rx="16" ry="20" fill="#44403c" opacity="0.4"/>
+      <circle cx="85" cy="143" r="9" fill="#44403c" opacity="0.4"/>
+
+      <!-- Right side - spectator silhouettes -->
+      <ellipse cx="415" cy="165" rx="18" ry="22" fill="#44403c" opacity="0.5"/>
+      <circle cx="415" cy="138" r="10" fill="#44403c" opacity="0.5"/>
+      <ellipse cx="375" cy="168" rx="16" ry="20" fill="#44403c" opacity="0.4"/>
+      <circle cx="375" cy="143" r="9" fill="#44403c" opacity="0.4"/>
+
+      <!-- Flag -->
+      <rect x="430" y="20" width="3" height="80" fill="#92400e" opacity="0.7"/>
+      <rect x="433" y="20" width="35" height="22" fill="#dc2626" opacity="0.8"/>
+      <line x1="433" y1="27" x2="468" y2="27" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+      <line x1="433" y1="34" x2="468" y2="34" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+
+      <!-- Bottom text banner -->
+      <rect y="188" width="480" height="32" fill="#15803d" opacity="0.9"/>
+      <text x="240" y="209" font-family="Arial Black" font-size="12" fill="#fff" text-anchor="middle" font-weight="900" letter-spacing="3">KEEP YOUR RECEIPTS. TRACK EVERYTHING.</text>
+    </svg>
+  </div>
+
+  <div class="status" id="status2" style="display:none;"></div>
+
+  <div class="results-card" id="resultsCard">
+    <h2>📋 Extracted details</h2>
+    <div id="fieldsContainer"></div>
+    <div style="margin-top:1.25rem;">
+      <button class="btn btn-save" onclick="saveToSheets()">💾 Save to Google Sheets</button>
+      <button class="btn" onclick="resetApp()">🔄 Scan another receipt</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="settings-btn" onclick="toggleSetup()"><div class="gear-label">Settings</div><div class="gear">⚙️</div></div>
+
+<script>
+const FIELDS = [
+  { key: 'store_name', label: 'Store' },
+  { key: 'date', label: 'Date' },
+  { key: 'category', label: 'Category' },
+  { key: 'total', label: 'Total ($)' },
+  { key: 'items', label: 'Items' },
+];
+let images = [null, null];
+let mimeTypes = ['image/jpeg', 'image/jpeg'];
+let accessToken = null;
+
+function getCachedToken() {
+  const t = sessionStorage.getItem('gToken');
+  const exp = sessionStorage.getItem('gTokenExp');
+  if (t && exp && Date.now() < parseInt(exp)) return t;
+  return null;
+}
+function setCachedToken(token) {
+  sessionStorage.setItem('gToken', token);
+  sessionStorage.setItem('gTokenExp', Date.now() + 55 * 60 * 1000);
+}
+function getSettings() {
+  return {
+    anthropicKey: localStorage.getItem('anthropicKey') || '',
+    googleClientId: localStorage.getItem('googleClientId') || '908806406436-mu9loij0v1d8e4rav7m45jp2gft782nu.apps.googleusercontent.com',
+    sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
+  };
+}
+function saveSettings() {
+  localStorage.setItem('anthropicKey', document.getElementById('anthropicKey').value.trim());
+  localStorage.setItem('googleClientId', document.getElementById('googleClientId').value.trim());
+  localStorage.setItem('sheetId', document.getElementById('sheetId').value.trim());
+  toggleSetup();
+  setStatus('Settings saved!', 'success');
+}
+function toggleSetup() {
+  const s = document.getElementById('setupSection');
+  const visible = s.style.display === 'block';
+  if (!visible) {
+    const cfg = getSettings();
+    document.getElementById('anthropicKey').value = cfg.anthropicKey;
+    document.getElementById('googleClientId').value = cfg.googleClientId;
+    document.getElementById('sheetId').value = cfg.sheetId;
+  }
+  s.style.display = visible ? 'none' : 'block';
+}
+function showZone2() {
+  document.getElementById('zone2Wrap').classList.add('visible');
+  document.getElementById('photo2Trigger').style.display = 'none';
+}
+function handleFile(e, num) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const idx = num - 1;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onerror = function() {
+      setStatus('Format not supported here. Try Safari or convert to JPG.', 'error');
+      document.getElementById('fileInput' + num).value = '';
+    };
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxDim = 2000;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      let quality = 0.85;
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+      while (dataUrl.length * 0.75 > 4.5 * 1024 * 1024 && quality > 0.4) {
+        quality -= 0.1;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+      images[idx] = dataUrl.split(',')[1];
+      mimeTypes[idx] = 'image/jpeg';
+      document.getElementById('uploadZone' + num).classList.add('has-image');
+      document.getElementById('scanBtn').disabled = false;
+      setStatus('', '');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+async function scanReceipt() {
+  if (!images[0]) return;
+  const cfg = getSettings();
+  if (!cfg.anthropicKey) { setStatus('Add your Anthropic API key in Settings first.', 'error'); return; }
+  document.getElementById('scanBtn').disabled = true;
+  setStatus('Reading receipt with AI...', 'info');
+  document.getElementById('resultsCard').style.display = 'none';
+  try {
+    const content = [];
+    content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
+    if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
+    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD), total (number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content }] })
+    });
+    const data = await resp.json();
+    if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.content.map(b => b.text || '').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    showResults(parsed);
+    setStatus('Receipt scanned! Review below then save.', 'success');
+  } catch(err) {
+    setStatus('Error: ' + (err.message || 'Could not read receipt.'), 'error');
+    document.getElementById('scanBtn').disabled = false;
+  }
+}
+function showResults(data) {
+  const container = document.getElementById('fieldsContainer');
+  container.innerHTML = '';
+  FIELDS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'field';
+    row.innerHTML = `<span class="field-label">${f.label}</span><span class="field-value"><input id="field_${f.key}" value="${data[f.key] || ''}" /></span>`;
+    container.appendChild(row);
+  });
+  document.getElementById('resultsCard').style.display = 'block';
+}
+function getEditedData() {
+  const out = {};
+  FIELDS.forEach(f => { out[f.key] = document.getElementById('field_' + f.key)?.value || ''; });
+  return out;
+}
+async function saveToSheets() {
+  const cfg = getSettings();
+  const btn = event.target;
+  btn.disabled = true;
+  setStatus('Connecting to Google...', 'info');
+  if (!accessToken) accessToken = getCachedToken();
+  if (!accessToken) {
+    try { accessToken = await getGoogleToken(cfg.googleClientId); setCachedToken(accessToken); }
+    catch(e) { setStatus('Google sign-in failed or was cancelled.', 'error'); btn.disabled = false; return; }
+  }
+  const d = getEditedData();
+  const row = [d.date, d.store_name, d.category, d.total, d.items];
+  setStatus('Saving to Google Sheets...', 'info');
+  try {
+    await ensureHeader(accessToken, cfg.sheetId);
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    setStatus('Saved to Google Sheets!', 'success');
+    btn.disabled = false;
+  } catch(e) {
+    setStatus('Failed to save. Try signing in again.', 'error');
+    accessToken = null;
+    sessionStorage.removeItem('gToken');
+    sessionStorage.removeItem('gTokenExp');
+    btn.disabled = false;
+  }
+}
+async function ensureHeader(token, sheetId) {
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1:E1`, { headers: { 'Authorization': 'Bearer ' + token } });
+  const data = await res.json();
+  if (!data.values || data.values[0]?.[0] !== 'Date') {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1:E1?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [['Date','Store','Category','Total','Items']] })
+    });
+  }
+}
+function getGoogleToken(clientId) {
+  return new Promise((resolve, reject) => {
+    if (typeof google === 'undefined') { reject(new Error('Google API not loaded')); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (response) => {
+        if (response.error) { reject(new Error(response.error)); return; }
+        resolve(response.access_token);
+      }
+    });
+    client.requestAccessToken({});
+  });
+}
+function resetApp() {
+  images = [null, null];
+  [1,2].forEach(n => {
+    document.getElementById('previewImg' + n).src = '';
+    document.getElementById('uploadZone' + n).classList.remove('has-image');
+    document.getElementById('fileInput' + n).value = '';
+  });
+  document.getElementById('zone2Wrap').classList.remove('visible');
+  document.getElementById('photo2Trigger').style.display = 'flex';
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('resultsCard').style.display = 'none';
+  setStatus('', '');
+}
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
