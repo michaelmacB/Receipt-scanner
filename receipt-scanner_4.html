@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt Scanner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; padding: 2rem 1rem; color: #1a1a1a; }
+    .app { max-width: 600px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header h1 { font-size: 26px; font-weight: 600; }
+    .header p { font-size: 14px; color: #666; margin-top: 4px; }
+    .card { background: #fff; border-radius: 14px; border: 1px solid #e5e5e5; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .upload-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 2.5rem 1rem; text-align: center; cursor: pointer; transition: background 0.15s; margin-bottom: 1.5rem; background: #fff; }
+    .upload-zone:hover { background: #f9f9f9; }
+    .upload-zone.has-image { border-style: solid; border-color: #999; }
+    .upload-zone img { max-width: 100%; max-height: 300px; border-radius: 10px; }
+    .upload-icon { font-size: 36px; margin-bottom: 10px; }
+    .upload-label { font-size: 16px; font-weight: 500; }
+    .upload-sub { font-size: 13px; color: #888; margin-top: 4px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.12s; background: #fff; color: #1a1a1a; width: 100%; }
+    .btn:hover { background: #f5f5f5; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #1a1a1a; color: #fff; border-color: transparent; }
+    .btn-primary:hover { background: #333; }
+    .status { font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-top: 1rem; display: none; }
+    .status.info { background: #e8f0fe; color: #1a56db; display: block; }
+    .status.success { background: #e6f4ea; color: #1e7e34; display: block; }
+    .status.error { background: #fce8e6; color: #c5221f; display: block; }
+    .results-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 1.5rem; margin-top: 1.5rem; display: none; }
+    .results-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+    .field { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; gap: 12px; }
+    .field:last-child { border-bottom: none; }
+    .field-label { font-size: 13px; color: #666; min-width: 100px; }
+    .field-value input { font-size: 13px; font-weight: 500; text-align: right; border: 1px solid #ddd; border-radius: 6px; padding: 5px 8px; background: #fafafa; color: #1a1a1a; min-width: 180px; }
+    .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 1.25rem; }
+    .setup-section { background: #fff; border-radius: 14px; border: 1px solid #e5e5e5; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .setup-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+    .setup-field { margin-bottom: 12px; }
+    .setup-field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+    .setup-field input { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fafafa; }
+    .setup-field input:focus { outline: none; border-color: #999; }
+    .toggle-setup { font-size: 13px; color: #888; cursor: pointer; text-decoration: underline; display: block; text-align: center; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>📄 Receipt scanner</h1>
+    <p>Take a photo of a receipt and save it to Google Sheets</p>
+  </div>
+
+  <div class="setup-section" id="setupSection" style="display:none;">
+    <h2>Settings</h2>
+    <div class="setup-field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anthropicKey" placeholder="sk-ant-..." />
+    </div>
+    <div class="setup-field">
+      <label>Google Client ID</label>
+      <input type="text" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" />
+    </div>
+    <div class="setup-field">
+      <label>Google Sheet ID</label>
+      <input type="text" id="sheetId" placeholder="Sheet ID from the URL" />
+    </div>
+    <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+  </div>
+  <span class="toggle-setup" onclick="toggleSetup()">⚙️ Settings</span>
+
+  <div style="height: 1.5rem;"></div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div id="uploadPrompt">
+      <div class="upload-icon">📷</div>
+      <div class="upload-label">Click to upload a receipt photo</div>
+      <div class="upload-sub">JPG, PNG, HEIC — from your phone or computer</div>
+    </div>
+    <img id="previewImg" style="display:none;" />
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFile(event)" />
+
+  <div class="actions">
+    <button class="btn btn-primary" id="scanBtn" onclick="scanReceipt()" disabled>Scan receipt</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="results-card" id="resultsCard">
+    <h2>Extracted details</h2>
+    <div id="fieldsContainer"></div>
+    <div class="actions" style="margin-top: 1.25rem;">
+      <button class="btn btn-primary" onclick="saveToSheets()">Save to Google Sheets</button>
+      <button class="btn" onclick="resetApp()">Scan another receipt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FIELDS = [
+  { key: 'store_name', label: 'Store' },
+  { key: 'date', label: 'Date' },
+  { key: 'category', label: 'Category' },
+  { key: 'subtotal', label: 'Subtotal ($)' },
+  { key: 'tax', label: 'Tax ($)' },
+  { key: 'total', label: 'Total ($)' },
+  { key: 'items', label: 'Items' },
+];
+
+let imageBase64 = null;
+let imageMimeType = 'image/jpeg';
+let accessToken = null;
+
+function getSettings() {
+  return {
+    anthropicKey: localStorage.getItem('anthropicKey') || '',
+    googleClientId: localStorage.getItem('googleClientId') || '908806406436-mu9loij0v1d8e4rav7m45jp2gft782nu.apps.googleusercontent.com',
+    sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
+  };
+}
+
+function saveSettings() {
+  localStorage.setItem('anthropicKey', document.getElementById('anthropicKey').value.trim());
+  localStorage.setItem('googleClientId', document.getElementById('googleClientId').value.trim());
+  localStorage.setItem('sheetId', document.getElementById('sheetId').value.trim());
+  toggleSetup();
+  setStatus('Settings saved!', 'success');
+}
+
+function toggleSetup() {
+  const s = document.getElementById('setupSection');
+  const visible = s.style.display !== 'none';
+  if (!visible) {
+    const cfg = getSettings();
+    document.getElementById('anthropicKey').value = cfg.anthropicKey;
+    document.getElementById('googleClientId').value = cfg.googleClientId;
+    document.getElementById('sheetId').value = cfg.sheetId;
+  }
+  s.style.display = visible ? 'none' : 'block';
+}
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  imageMimeType = file.type === 'image/png' ? 'image/png' : file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const dataUrl = ev.target.result;
+    imageBase64 = dataUrl.split(',')[1];
+    document.getElementById('previewImg').src = dataUrl;
+    document.getElementById('previewImg').style.display = 'block';
+    document.getElementById('uploadPrompt').style.display = 'none';
+    document.getElementById('uploadZone').classList.add('has-image');
+    document.getElementById('scanBtn').disabled = false;
+    setStatus('', '');
+  };
+  reader.readAsDataURL(file);
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+async function scanReceipt() {
+  if (!imageBase64) return;
+  const cfg = getSettings();
+  if (!cfg.anthropicKey) {
+    setStatus('Please add your Anthropic API key in Settings first.', 'error');
+    return;
+  }
+  document.getElementById('scanBtn').disabled = true;
+  setStatus('Reading receipt with AI...', 'info');
+  document.getElementById('resultsCard').style.display = 'none';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
+            { type: 'text', text: 'Extract receipt data and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD), total (number only), tax (number only), subtotal (number only), category (Groceries, Restaurant, Gas, Shopping, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' }
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    showResults(parsed);
+    setStatus('Receipt scanned! Review the details below, then save.', 'success');
+  } catch(err) {
+    setStatus('Error: ' + (err.message || 'Could not read the receipt. Try a clearer photo.'), 'error');
+    document.getElementById('scanBtn').disabled = false;
+  }
+}
+
+function showResults(data) {
+  const container = document.getElementById('fieldsContainer');
+  container.innerHTML = '';
+  FIELDS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'field';
+    row.innerHTML = `<span class="field-label">${f.label}</span><span class="field-value"><input id="field_${f.key}" value="${data[f.key] || ''}" /></span>`;
+    container.appendChild(row);
+  });
+  document.getElementById('resultsCard').style.display = 'block';
+}
+
+function getEditedData() {
+  const out = {};
+  FIELDS.forEach(f => { out[f.key] = document.getElementById('field_' + f.key)?.value || ''; });
+  return out;
+}
+
+async function saveToSheets() {
+  const cfg = getSettings();
+  const btn = event.target;
+  btn.disabled = true;
+  setStatus('Connecting to Google...', 'info');
+
+  if (!accessToken) {
+    try { accessToken = await getGoogleToken(cfg.googleClientId); }
+    catch(e) { setStatus('Google sign-in failed or was cancelled.', 'error'); btn.disabled = false; return; }
+  }
+
+  const d = getEditedData();
+  const now = new Date().toLocaleString();
+  const row = [d.date, d.store_name, d.category, d.subtotal, d.tax, d.total, d.items, now];
+
+  setStatus('Saving to Google Sheets...', 'info');
+  try {
+    await ensureHeader(accessToken, cfg.sheetId);
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Sheet1!A:H:append?valueInputOption=USER_ENTERED`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    setStatus('Saved to Google Sheets successfully!', 'success');
+    btn.disabled = false;
+  } catch(e) {
+    setStatus('Failed to save. Try signing in again.', 'error');
+    accessToken = null;
+    btn.disabled = false;
+  }
+}
+
+async function ensureHeader(token, sheetId) {
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1:H1`, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await res.json();
+  if (!data.values || data.values[0]?.[0] !== 'Date') {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1:H1?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [['Date','Store','Category','Subtotal','Tax','Total','Items','Scanned At']] })
+    });
+  }
+}
+
+function getGoogleToken(clientId) {
+  return new Promise((resolve, reject) => {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: window.location.origin + window.location.pathname.replace(/\/$/, '') + '/',
+      response_type: 'token',
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      prompt: 'consent'
+    });
+    const popup = window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params, 'google_auth', 'width=500,height=600');
+    const timer = setInterval(() => {
+      try {
+        if (popup.closed) { clearInterval(timer); reject(new Error('closed')); return; }
+        const url = popup.location.href;
+        if (url.includes('access_token')) {
+          clearInterval(timer);
+          popup.close();
+          const hash = url.split('#')[1];
+          resolve(new URLSearchParams(hash).get('access_token'));
+        }
+      } catch(e) {}
+    }, 300);
+  });
+}
+
+function resetApp() {
+  imageBase64 = null;
+  document.getElementById('previewImg').style.display = 'none';
+  document.getElementById('uploadPrompt').style.display = 'block';
+  document.getElementById('uploadZone').classList.remove('has-image');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('resultsCard').style.display = 'none';
+  setStatus('', '');
+}
+</script>
+</body>
+</html>
