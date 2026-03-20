@@ -319,19 +319,18 @@ async function scanReceipt() {
   try {
     let receiptText = '';
     if (cfg.visionKey) {
-      const text1 = await extractTextVision(images[0], cfg.visionKey);
-    console.log('Vision text:', text1);
-      const text2 = images[1] ? await extractTextVision(images[1], cfg.visionKey) : '';
-      receiptText = text1 + (text2 ? '\n' + text2 : '');
+      try {
+        const text1 = await extractTextVision(images[0], cfg.visionKey);
+        const text2 = images[1] ? await extractTextVision(images[1], cfg.visionKey) : '';
+        receiptText = text1 + (text2 ? '\n' + text2 : '');
+      } catch(ve) { receiptText = ''; }
     }
     const content = [];
-    if (!cfg.visionKey) {
-      content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
-      if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    }
-    const promptText = cfg.visionKey
-      ? `Here is the exact text from a receipt:\n\n${receiptText}\n\nRespond ONLY with a JSON object. Fields: store_name, date (YYYY-MM-DD, ignore timestamps), total (GRAND TOTAL number only, no $ sign), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on items purchased), items (up to 5 main items exactly as printed). Use empty string for missing fields.`
-      : `Read this receipt carefully. Respond ONLY with a JSON object. Fields: store_name, date (YYYY-MM-DD, ignore timestamps), total (GRAND TOTAL number only, no $ sign), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (up to 5 main items exactly as printed). Use empty string for missing fields.`;
+    // Always send image to Anthropic - use Vision text as extra context if available
+    content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
+    if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
+    const visionContext = receiptText ? `\n\nHere is OCR text extracted from the receipt to help you:\n${receiptText}` : '';
+    const promptText = `Look at this receipt image carefully and respond ONLY with a valid JSON object, no explanation, no markdown. Fields: store_name, date (YYYY-MM-DD format only, ignore any time like 10:34 AM), total (the final GRAND TOTAL number only, no $ sign), category (choose from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on what was purchased), items (comma-separated list of up to 5 main items exactly as printed on the receipt).${visionContext} Use empty string for any missing fields.`;
     content.push({ type: 'text', text: promptText });
     console.log('Sending to Anthropic:', promptText.substring(0, 200));
     setStatus('Extracting details...', 'info');
