@@ -320,6 +320,7 @@ async function scanReceipt() {
     let receiptText = '';
     if (cfg.visionKey) {
       const text1 = await extractTextVision(images[0], cfg.visionKey);
+    console.log('Vision text:', text1);
       const text2 = images[1] ? await extractTextVision(images[1], cfg.visionKey) : '';
       receiptText = text1 + (text2 ? '\n' + text2 : '');
     }
@@ -332,6 +333,7 @@ async function scanReceipt() {
       ? `Here is the exact text from a receipt:\n\n${receiptText}\n\nRespond ONLY with a JSON object. Fields: store_name, date (YYYY-MM-DD, ignore timestamps), total (GRAND TOTAL number only, no $ sign), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on items purchased), items (up to 5 main items exactly as printed). Use empty string for missing fields.`
       : `Read this receipt carefully. Respond ONLY with a JSON object. Fields: store_name, date (YYYY-MM-DD, ignore timestamps), total (GRAND TOTAL number only, no $ sign), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (up to 5 main items exactly as printed). Use empty string for missing fields.`;
     content.push({ type: 'text', text: promptText });
+    console.log('Sending to Anthropic:', promptText.substring(0, 200));
     setStatus('Extracting details...', 'info');
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -341,6 +343,7 @@ async function scanReceipt() {
     const data = await resp.json();
     if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
     const text = data.content.map(b => b.text || '').join('');
+    console.log('Anthropic raw response:', text);
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     showResults(parsed);
     setStatus('Receipt scanned! Review below then save.', 'success');
