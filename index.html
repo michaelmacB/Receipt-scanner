@@ -10,8 +10,8 @@
     body { font-family: 'Inter', sans-serif; background: linear-gradient(160deg, #f0fdf4 0%, #f7fef9 50%, #ecfdf5 100%); min-height: 100vh; color: #1a1a1a; }
 
     /* HEADER */
-    .header { padding: 1.5rem 1.25rem 1rem; display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #166534; background: #0a0a0a; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    .logo { width: 48px; height: 48px; flex-shrink: 0; }
+    .header { padding: 0.5rem 1rem 0.5rem; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #166534; background: #0a0a0a; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .logo { width: 38px; height: 38px; flex-shrink: 0; }
     .header-text h1 { font-family: 'Cinzel Decorative', cursive; font-size: 28px; letter-spacing: 2px; font-weight: 700; line-height: 1.1; background: linear-gradient(180deg, #bbf7d0 0%, #4ade80 30%, #16a34a 55%, #4ade80 80%, #86efac 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 6px rgba(74,222,128,0.8)) drop-shadow(1px 1px 0px #052e16); }
     .tagline { font-size: 11px; color: #4ade80; font-weight: 600; letter-spacing: 1.5px; margin-top: 3px; }
 
@@ -33,7 +33,7 @@
     .info-card-title { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #16a34a; text-transform: uppercase; margin-bottom: 6px; }
     .info-card-body { font-size: 12px; color: #444; font-weight: 500; line-height: 1.5; }
     .info-card-body strong { color: #16a34a; font-weight: 800; }
-    .two-photo-card { background: #fef9c3; border: 2px solid #fde047; border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px; }
+    .two-photo-card { background: #fef9c3; border: 1.5px solid #fde047; border-radius: 8px; padding: 0.25rem 0.75rem; margin-bottom: 1.25rem; display: inline-flex; align-items: center; gap: 8px; }
     .two-photo-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
     .two-photo-text { font-size: 13px; font-weight: 700; color: #854d0e; line-height: 1.4; }
     .two-photo-text span { font-weight: 500; color: #713f12; display: block; font-size: 12px; margin-top: 2px; }
@@ -129,13 +129,13 @@
   </div>
 
   <!-- TWO PHOTO NOTICE -->
-  <div class="two-photo-card">
+  <div style="margin-bottom:1.25rem;"><div class="two-photo-card" style="margin-bottom:0;">
     <div class="two-photo-icon">📸</div>
     <div class="two-photo-text">
       Long receipt? Use TWO photos!
       <span>Tap "+ Add second photo" below after your first upload to capture the rest of the receipt.</span>
     </div>
-  </div>
+  </div></div>
 
   <!-- UPLOAD ZONE 1 -->
   <div class="upload-zone" id="uploadZone1">
@@ -188,7 +188,6 @@
     <div id="fieldsContainer"></div>
     <div style="margin-top:1.25rem;">
       <button class="btn btn-save" onclick="saveToSheets()">💾 Save to Google Sheets</button>
-      <button class="btn" onclick="resetApp()">🔄 Scan another receipt</button>
     </div>
   </div>
 
@@ -447,12 +446,26 @@ async function saveToSheets() {
       headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ values: [row] })
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (res.status === 401) {
+      accessToken = null;
+      sessionStorage.removeItem('gToken');
+      sessionStorage.removeItem('gTokenExp');
+      try { accessToken = await getGoogleToken(cfg.googleClientId); setCachedToken(accessToken); }
+      catch(e) { setStatus('Google sign-in failed. Please try again.', 'error'); btn.disabled = false; return; }
+      const res2 = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [row] })
+      });
+      if (!res2.ok) throw new Error(await res2.text());
+    } else if (!res.ok) {
+      throw new Error(await res.text());
+    }
     setStatus('Saved to Google Sheets!', 'success');
     btn.disabled = false;
     resetApp();
   } catch(e) {
-    setStatus('Failed to save. Try signing in again.', 'error');
+    setStatus('Error: ' + (e.message || 'Failed to save.'), 'error');
     accessToken = null;
     sessionStorage.removeItem('gToken');
     sessionStorage.removeItem('gTokenExp');
