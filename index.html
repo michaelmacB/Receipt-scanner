@@ -358,7 +358,7 @@ function handleFile(e, num) {
     const img = new Image();
     img.onerror = function() {
       setStatus('Format not supported here. Try Safari or convert to JPG.', 'error');
-      document.getElementById('fileInput' + num).value = '';
+      const fi = document.getElementById('fileInput' + num); if(fi) fi.value = '';
     };
     img.onload = function() {
       const canvas = document.createElement('canvas');
