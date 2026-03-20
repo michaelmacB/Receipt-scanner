@@ -173,6 +173,17 @@
 
   <div class="status" id="status"></div>
 
+  <div class="status" id="status2" style="display:none;"></div>
+
+  <div class="results-card" id="resultsCard">
+    <h2>📋 Extracted details</h2>
+    <div id="fieldsContainer"></div>
+    <div style="margin-top:1.25rem;">
+      <button class="btn btn-save" onclick="saveToSheets()">💾 Save to Google Sheets</button>
+      <button class="btn" onclick="resetApp()">🔄 Scan another receipt</button>
+    </div>
+  </div>
+
   <!-- COURTROOM ILLUSTRATION -->
   <div class="courtroom-wrap">
     <svg class="courtroom-svg" viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg">
@@ -265,16 +276,7 @@
     </svg>
   </div>
 
-  <div class="status" id="status2" style="display:none;"></div>
 
-  <div class="results-card" id="resultsCard">
-    <h2>📋 Extracted details</h2>
-    <div id="fieldsContainer"></div>
-    <div style="margin-top:1.25rem;">
-      <button class="btn btn-save" onclick="saveToSheets()">💾 Save to Google Sheets</button>
-      <button class="btn" onclick="resetApp()">🔄 Scan another receipt</button>
-    </div>
-  </div>
 
 </div>
 
@@ -384,7 +386,7 @@ async function scanReceipt() {
     const content = [];
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD), total (number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
+    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD format only — ignore any time stamps like 10:34 AM, look for the actual calendar date on the receipt), total (number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -440,6 +442,7 @@ async function saveToSheets() {
     if (!res.ok) throw new Error(await res.text());
     setStatus('Saved to Google Sheets!', 'success');
     btn.disabled = false;
+    setTimeout(() => resetApp(), 2000);
   } catch(e) {
     setStatus('Failed to save. Try signing in again.', 'error');
     accessToken = null;
