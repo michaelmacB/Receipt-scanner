@@ -83,6 +83,14 @@
     .field:last-child { border-bottom: none; }
     .field-label { font-size: 13px; color: #666; min-width: 90px; font-weight: 600; }
     .field-value input { font-size: 13px; font-weight: 600; text-align: right; border: 1.5px solid #bbf7d0; border-radius: 6px; padding: 5px 8px; background: #dcfce7; color: #1a1a1a; min-width: 160px; }
+
+    /* SAVE POPUP */
+    .save-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: #15803d; color: #fff; border-radius: 20px; padding: 1.5rem 2.5rem; text-align: center; z-index: 999; transition: transform 0.2s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .save-popup.show { transform: translate(-50%, -50%) scale(1); }
+    .save-popup-icon { font-size: 48px; margin-bottom: 8px; }
+    .save-popup-text { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+    .save-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; }
+    .save-overlay.show { display: block; }
   </style>
 </head>
 <body>
@@ -461,9 +469,15 @@ async function saveToSheets() {
     } else if (!res.ok) {
       throw new Error(await res.text());
     }
-    setStatus('Saved to Google Sheets!', 'success');
     btn.disabled = false;
-    resetApp();
+    document.getElementById('saveOverlay').classList.add('show');
+    document.getElementById('savePopup').classList.add('show');
+    setTimeout(() => {
+      document.getElementById('saveOverlay').classList.remove('show');
+      document.getElementById('savePopup').classList.remove('show');
+      resetApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 1500);
   } catch(e) {
     setStatus('Error: ' + (e.message || 'Failed to save.'), 'error');
     accessToken = null;
@@ -518,6 +532,11 @@ function resetApp() {
   setStatus('', '');
 }
 </script>
+<div class="save-overlay" id="saveOverlay"></div>
+<div class="save-popup" id="savePopup">
+  <div class="save-popup-icon">✅</div>
+  <div class="save-popup-text">Saved!</div>
+</div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
