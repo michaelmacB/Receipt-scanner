@@ -553,10 +553,8 @@ function resetApp() {
     if (img) img.src = '';
     const zone = document.getElementById('uploadZone' + n);
     if (zone) zone.classList.remove('has-image');
-    ['fileInput','fileInputCamera','fileInputLibrary'].forEach(id => {
-      const el = document.getElementById(id + n);
-      if (el) el.value = '';
-    });
+    const fi = document.getElementById('fileInput' + n);
+    if (fi) fi.value = '';
   });
   const zone2 = document.getElementById('zone2Wrap');
   if (zone2) zone2.classList.remove('visible');
