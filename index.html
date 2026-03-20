@@ -413,6 +413,10 @@ async function scanReceipt() {
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     showResults(parsed);
     setStatus('Receipt scanned! Review below then save.', 'success');
+    setTimeout(() => {
+      const el = document.getElementById('resultsCard');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   } catch(err) {
     setStatus('Error: ' + (err.message || 'Could not read receipt.'), 'error');
     document.getElementById('scanBtn').disabled = false;
