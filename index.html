@@ -145,21 +145,17 @@
   <div class="upload-zone" id="uploadZone1">
     <div class="upload-prompt">
       <div class="upload-icon">📷</div>
-      <div class="upload-label">Receipt photo</div>
-      <div style="font-size:11px; color:#888; margin-top:6px; margin-bottom:4px; line-height:1.5;">📌 Place receipt flat · bright light · hold close</div>
-      <div class="upload-sub" style="margin-top:4px; display:flex; gap:10px; justify-content:center;">
-        <button onclick="document.getElementById('fileInputCamera1').click()" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</button>
-        <button onclick="document.getElementById('fileInputLibrary1').click()" style="background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</button>
+      <div class="upload-label">Receipt Photo 1</div>
+      <div style="font-size:11px; color:#888; margin-top:6px; margin-bottom:12px; line-height:1.5;">📌 Place receipt flat · bright light · hold close</div>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <label for="fileInputTake1" style="display:inline-block; background:#16a34a; color:#fff; border-radius:10px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</label>
+        <label for="fileInputUpload1" style="display:inline-block; background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:10px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</label>
       </div>
     </div>
-    <img id="previewImg1" alt="" />
     <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 1 ready!</div></div>
   </div>
-
-  <input type="file" id="fileInputCamera1" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(event,1)" />
-  <input type="file" id="fileInputLibrary1" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,1)" />
-  <input type="file" id="fileInputCamera2" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(event,2)" />
-  <input type="file" id="fileInputLibrary2" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,2)" />
+  <input type="file" id="fileInputTake1" accept="image/*" style="display:none;" onchange="handleFile(event,1)" />
+  <input type="file" id="fileInputUpload1" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,1)" />
 
   <div class="photo2-trigger" id="photo2Trigger" onclick="showZone2()">
     <span>📄</span> + Add second photo for long receipts
@@ -170,16 +166,16 @@
     <div class="upload-zone" id="uploadZone2">
       <div class="upload-prompt">
         <div class="upload-icon">📷</div>
-        <div class="upload-label">Second part of receipt</div>
-        <div style="font-size:11px; color:#888; margin-top:6px; margin-bottom:4px; line-height:1.5;">📌 Place receipt flat · bright light · hold close</div>
-      <div class="upload-sub" style="margin-top:4px; display:flex; gap:10px; justify-content:center;">
-          <button onclick="document.getElementById('fileInputCamera2').click()" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</button>
-          <button onclick="document.getElementById('fileInputLibrary2').click()" style="background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</button>
+        <div class="upload-label">Receipt Photo 2</div>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:12px;">
+          <label for="fileInputTake2" style="display:inline-block; background:#16a34a; color:#fff; border-radius:10px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</label>
+          <label for="fileInputUpload2" style="display:inline-block; background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:10px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</label>
         </div>
       </div>
-      <img id="previewImg2" alt="" />
       <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 2 ready!</div></div>
     </div>
+  <input type="file" id="fileInputTake2" accept="image/*" style="display:none;" onchange="handleFile(event,2)" />
+  <input type="file" id="fileInputUpload2" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,2)" />
   </div>
 
   <!-- SCAN BUTTON -->
