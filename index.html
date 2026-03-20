@@ -27,7 +27,7 @@
     .upload-zone.has-image .success-msg { display: flex; }
     .upload-icon { font-size: 30px; margin-bottom: 6px; }
     .upload-label { font-size: 15px; font-weight: 700; color: #16a34a; margin-bottom: 6px; }
-    .upload-tip { font-size: 11px; color: #888; margin-bottom: 12px; }
+    .upload-tip { font-size: 14px; color: #1a1a1a; font-weight: 800; margin-bottom: 12px; }
     .upload-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
     .btn-take { display: inline-block; background: #16a34a; color: #fff; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-upload { display: inline-block; background: #fff; color: #16a34a; border: 2px solid #16a34a; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -329,15 +329,17 @@ async function scanReceipt() {
     // Always send image to Anthropic - use Vision text as extra context if available
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    const visionContext = receiptText ? `\n\nHere is OCR text extracted from the receipt to help you:\n${receiptText}` : '';
-    const promptText = `Look at this receipt image carefully and respond ONLY with a valid JSON object, no explanation, no markdown. Fields: store_name, date (YYYY-MM-DD format only, ignore any time like 10:34 AM), total (the final GRAND TOTAL number only, no $ sign), category (choose from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on what was purchased), items (comma-separated list of up to 5 main items exactly as printed on the receipt).${visionContext} Use empty string for any missing fields.`;
+    const visionContext = receiptText ? `\n\nTHE FOLLOWING IS THE EXACT TEXT FROM THE RECEIPT - THIS IS YOUR ONLY SOURCE OF TRUTH. Do not use the image for spelling. Copy every store name, product name, brand name, and number EXACTLY character by character from this text:\n\n${receiptText}\n\nDo NOT guess or interpret - only use what is written above.` : '';
+    const promptText = receiptText
+      ? `You are a data extractor. Extract fields from the receipt text below. Respond ONLY with valid JSON, no explanation. CRITICAL: Copy all text EXACTLY as written - do not correct, guess, or change any spelling. Fields: store_name (exact name), date (YYYY-MM-DD only, ignore times like 10:34), total (final GRAND TOTAL number only, no $, not subtotal or tax), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on items), items (up to 5 main items copied EXACTLY as written). Use empty string if not found.${visionContext}`
+      : `Look at this receipt image. Respond ONLY with valid JSON. Fields: store_name, date (YYYY-MM-DD only), total (GRAND TOTAL number only, no $), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (up to 5 items). Use empty string if not found.`;
     content.push({ type: 'text', text: promptText });
     console.log('Sending to Anthropic:', promptText.substring(0, 200));
     setStatus('Extracting details...', 'info');
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content }] })
     });
     const data = await resp.json();
     if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
