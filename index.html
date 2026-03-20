@@ -401,7 +401,7 @@ async function scanReceipt() {
     const content = [];
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD format only — ignore any time stamps like 10:34 AM, look for the actual calendar date on the receipt), total (the final TOTAL amount charged, look for the word TOTAL on the receipt - not subtotal, not tax, not balance - just the final total number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
+    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD format only — ignore any time stamps like 10:34 AM, look for the actual calendar date on the receipt), total (find the single GRAND TOTAL or TOTAL DUE amount - the largest bottom-line number on the receipt, NOT subtotal, NOT tax, NOT balance owing separately - if there are two images combine them and find the one final total, number only no $ sign), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -449,7 +449,7 @@ async function saveToSheets() {
     catch(e) { setStatus('Google sign-in failed or was cancelled.', 'error'); btn.disabled = false; return; }
   }
   const d = getEditedData();
-  const row = [d.date, d.store_name, d.category, 'TOTAL: ' + d.total, d.items];
+  const row = [d.date, d.store_name, d.category, '$' + d.total, d.items];
   setStatus('Saving to Google Sheets...', 'info');
   try {
     await ensureHeader(accessToken, cfg.sheetId);
