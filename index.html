@@ -500,12 +500,19 @@ function getGoogleToken(clientId) {
 function resetApp() {
   images = [null, null];
   [1,2].forEach(n => {
-    document.getElementById('previewImg' + n).src = '';
-    document.getElementById('uploadZone' + n).classList.remove('has-image');
-    document.getElementById('fileInput' + n).value = '';
+    const img = document.getElementById('previewImg' + n);
+    if (img) img.src = '';
+    const zone = document.getElementById('uploadZone' + n);
+    if (zone) zone.classList.remove('has-image');
+    ['fileInput','fileInputCamera','fileInputLibrary'].forEach(id => {
+      const el = document.getElementById(id + n);
+      if (el) el.value = '';
+    });
   });
-  document.getElementById('zone2Wrap').classList.remove('visible');
-  document.getElementById('photo2Trigger').style.display = 'flex';
+  const zone2 = document.getElementById('zone2Wrap');
+  if (zone2) zone2.classList.remove('visible');
+  const trigger = document.getElementById('photo2Trigger');
+  if (trigger) trigger.style.display = 'flex';
   document.getElementById('scanBtn').disabled = true;
   document.getElementById('resultsCard').style.display = 'none';
   setStatus('', '');
