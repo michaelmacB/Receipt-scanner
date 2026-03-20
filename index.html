@@ -117,6 +117,7 @@
 <div class="setup-section" id="setupSection">
   <h2>⚙️ Settings</h2>
   <div class="setup-field"><label>Anthropic API Key</label><input type="password" id="anthropicKey" placeholder="sk-ant-..." /></div>
+  <div class="setup-field"><label>Google Vision API Key</label><input type="password" id="visionKey" placeholder="AIza..." /></div>
   <div class="setup-field"><label>Google Client ID</label><input type="text" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" /></div>
   <div class="setup-field"><label>Google Sheet ID</label><input type="text" id="sheetId" placeholder="Sheet ID from the URL" /></div>
   <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
@@ -319,12 +320,14 @@ function setCachedToken(token) {
 function getSettings() {
   return {
     anthropicKey: localStorage.getItem('anthropicKey') || '',
+    visionKey: localStorage.getItem('visionKey') || 'AIzaSyAUI0mtKxFXWxOOsQn68vR_uLltF_rCyd4',
     googleClientId: localStorage.getItem('googleClientId') || '908806406436-mu9loij0v1d8e4rav7m45jp2gft782nu.apps.googleusercontent.com',
     sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
   };
 }
 function saveSettings() {
   localStorage.setItem('anthropicKey', document.getElementById('anthropicKey').value.trim());
+  localStorage.setItem('visionKey', document.getElementById('visionKey').value.trim());
   localStorage.setItem('googleClientId', document.getElementById('googleClientId').value.trim());
   localStorage.setItem('sheetId', document.getElementById('sheetId').value.trim());
   toggleSetup();
@@ -336,6 +339,7 @@ function toggleSetup() {
   if (!visible) {
     const cfg = getSettings();
     document.getElementById('anthropicKey').value = cfg.anthropicKey;
+    document.getElementById('visionKey').value = cfg.visionKey;
     document.getElementById('googleClientId').value = cfg.googleClientId;
     document.getElementById('sheetId').value = cfg.sheetId;
   }
@@ -387,18 +391,48 @@ function setStatus(msg, type) {
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
+async function extractTextVision(base64, visionKey) {
+  const resp = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: [{ image: { content: base64 }, features: [{ type: 'TEXT_DETECTION' }] }] })
+  });
+  const data = await resp.json();
+  return data.responses?.[0]?.fullTextAnnotation?.text || '';
+}
+
 async function scanReceipt() {
   if (!images[0]) return;
   const cfg = getSettings();
   if (!cfg.anthropicKey) { setStatus('Add your Anthropic API key in Settings first.', 'error'); return; }
   document.getElementById('scanBtn').disabled = true;
-  setStatus('Reading receipt with AI...', 'info');
+  setStatus('Reading receipt...', 'info');
   document.getElementById('resultsCard').style.display = 'none';
   try {
+    let receiptText = '';
+    if (cfg.visionKey) {
+      setStatus('Reading text from receipt...', 'info');
+      const text1 = await extractTextVision(images[0], cfg.visionKey);
+      const text2 = images[1] ? await extractTextVision(images[1], cfg.visionKey) : '';
+      receiptText = text1 + (text2 ? '
+' + text2 : '');
+    }
+
     const content = [];
-    content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
-    if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    content.push({ type: 'text', text: 'You are carefully reading a receipt image. Before responding, carefully re-read every word and number on the receipt to make sure you have it right. Extract receipt data and respond ONLY with a JSON object, no markdown, no explanation. Rules: (1) Read every product name, brand name and store name character by character - do not guess or approximate, preserve exact spelling and capitalization as printed on the receipt. (2) If any text is unclear, look again carefully before deciding. (3) For date: use YYYY-MM-DD format only, ignore any timestamps like 10:34 AM, find the actual calendar date. (4) For total: find the single GRAND TOTAL or TOTAL DUE - the final bottom-line amount, NOT subtotal, NOT tax - number only no $ sign. (5) For items: list up to 5 main items exactly as printed, preserving brand names and capitalization. Fields: store_name, date, total, category (choose based on what was purchased from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items. Use empty string for missing fields.' });
+    if (!cfg.visionKey) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
+      if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
+    }
+    const promptText = cfg.visionKey
+      ? `Here is the exact text extracted from a receipt:
+
+${receiptText}
+
+Extract the receipt data and respond ONLY with a JSON object, no markdown, no explanation. Rules: (1) Use the exact spelling and capitalization from the text above. (2) For date: YYYY-MM-DD format only, ignore timestamps. (3) For total: the single GRAND TOTAL or TOTAL DUE, NOT subtotal or tax, number only no $ sign. (4) For items: up to 5 main items exactly as printed. Fields: store_name, date, total, category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items. Use empty string for missing fields.`
+      : `You are carefully reading a receipt image. Extract receipt data and respond ONLY with a JSON object, no markdown, no explanation. Rules: (1) Read every product name character by character, preserve exact spelling and capitalization. (2) For date: YYYY-MM-DD format only, ignore timestamps. (3) For total: GRAND TOTAL or TOTAL DUE only, number only no $ sign. (4) For items: up to 5 main items exactly as printed. Fields: store_name, date, total, category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items. Use empty string for missing fields.`;
+    content.push({ type: 'text', text: promptText });
+
+    setStatus('Extracting details...', 'info');
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
