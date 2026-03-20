@@ -138,18 +138,23 @@
   </div>
 
   <!-- UPLOAD ZONE 1 -->
-  <div class="upload-zone" id="uploadZone1" onclick="document.getElementById('fileInput1').click()">
+  <div class="upload-zone" id="uploadZone1">
     <div class="upload-prompt">
       <div class="upload-icon">📷</div>
-      <div class="upload-label">Take a photo or upload</div>
-      <div class="upload-sub">JPG · PNG · HEIC · HEIF</div>
+      <div class="upload-label">Receipt photo</div>
+      <div class="upload-sub" style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
+        <button onclick="document.getElementById('fileInputCamera1').click()" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</button>
+        <button onclick="document.getElementById('fileInputLibrary1').click()" style="background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</button>
+      </div>
     </div>
     <img id="previewImg1" alt="" />
     <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 1 ready!</div></div>
   </div>
 
-  <input type="file" id="fileInput1" accept="image/*,.heif,.heic" capture="environment" style="display:none;" onchange="handleFile(event,1)" />
-  <input type="file" id="fileInput2" accept="image/*,.heif,.heic" capture="environment" style="display:none;" onchange="handleFile(event,2)" />
+  <input type="file" id="fileInputCamera1" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(event,1)" />
+  <input type="file" id="fileInputLibrary1" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,1)" />
+  <input type="file" id="fileInputCamera2" accept="image/*" capture="environment" style="display:none;" onchange="handleFile(event,2)" />
+  <input type="file" id="fileInputLibrary2" accept="image/*,.heif,.heic" style="display:none;" onchange="handleFile(event,2)" />
 
   <div class="photo2-trigger" id="photo2Trigger" onclick="showZone2()">
     <span>📄</span> + Add second photo for long receipts
@@ -157,11 +162,14 @@
 
   <div class="upload-zone2-wrap" id="zone2Wrap">
     <div class="zone2-label">📄 Photo 2 — rest of receipt</div>
-    <div class="upload-zone" id="uploadZone2" onclick="document.getElementById('fileInput2').click()">
+    <div class="upload-zone" id="uploadZone2">
       <div class="upload-prompt">
         <div class="upload-icon">📷</div>
-        <div class="upload-label">Take a photo or upload</div>
-        <div class="upload-sub">Second part of receipt</div>
+        <div class="upload-label">Second part of receipt</div>
+        <div class="upload-sub" style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
+          <button onclick="document.getElementById('fileInputCamera2').click()" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">📷 Take Photo</button>
+          <button onclick="document.getElementById('fileInputLibrary2').click()" style="background:#fff; color:#16a34a; border:2px solid #16a34a; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">🖼 Upload</button>
+        </div>
       </div>
       <img id="previewImg2" alt="" />
       <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 2 ready!</div></div>
@@ -386,7 +394,7 @@ async function scanReceipt() {
     const content = [];
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD format only — ignore any time stamps like 10:34 AM, look for the actual calendar date on the receipt), total (number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
+    content.push({ type: 'text', text: 'Extract receipt data from the image(s) and respond ONLY with a JSON object, no markdown, no explanation. Fields: store_name, date (YYYY-MM-DD format only — ignore any time stamps like 10:34 AM, look for the actual calendar date on the receipt), total (the final TOTAL amount charged, look for the word TOTAL on the receipt - not subtotal, not tax, not balance - just the final total number only), category (choose based on what was actually purchased, not the store name - pick the best fit from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (comma-separated list of main items, max 5). Use empty string for missing fields.' });
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -430,7 +438,7 @@ async function saveToSheets() {
     catch(e) { setStatus('Google sign-in failed or was cancelled.', 'error'); btn.disabled = false; return; }
   }
   const d = getEditedData();
-  const row = [d.date, d.store_name, d.category, d.total, d.items];
+  const row = [d.date, d.store_name, d.category, 'TOTAL: ' + d.total, d.items];
   setStatus('Saving to Google Sheets...', 'info');
   try {
     await ensureHeader(accessToken, cfg.sheetId);
@@ -442,7 +450,7 @@ async function saveToSheets() {
     if (!res.ok) throw new Error(await res.text());
     setStatus('Saved to Google Sheets!', 'success');
     btn.disabled = false;
-    setTimeout(() => resetApp(), 2000);
+    resetApp();
   } catch(e) {
     setStatus('Failed to save. Try signing in again.', 'error');
     accessToken = null;
