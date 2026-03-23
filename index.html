@@ -427,7 +427,7 @@ function getGoogleToken(clientId) {
     if (typeof google === 'undefined') { reject(new Error('Google API not loaded')); return; }
     const client = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email',
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
       callback: (response) => {
         if (response.error) { reject(new Error(response.error)); return; }
         resolve(response.access_token);
@@ -437,33 +437,7 @@ function getGoogleToken(clientId) {
   });
 }
 
-async function getUserEmail(token) {
-  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const data = await res.json();
-  return data.email || '';
-}
 
-async function getOrCreateSheet(token, serverUrl) {
-  const saved = localStorage.getItem('sheetId');
-  if (saved) return saved;
-
-  setStatus('Setting up your personal Google Sheet...', 'info');
-  const email = await getUserEmail(token);
-  if (!email) throw new Error('Could not get your email from Google');
-
-  const res = await fetch(serverUrl + '/create-sheet', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userEmail: email })
-  });
-  const data = await res.json();
-  if (data.error) throw new Error('Sheet creation failed: ' + data.error);
-  localStorage.setItem('sheetId', data.sheetId);
-  setStatus('Your personal sheet is ready!', 'success');
-  return data.sheetId;
-}
 
 function resetApp() {
   images = [null, null];
