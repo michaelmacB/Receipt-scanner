@@ -116,7 +116,7 @@
     </div>
     <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 1 ready!</div></div>
   </div>
-  <input type="file" id="fileInputTake1" accept="image/*" style="display:none;" />
+  <input type="file" id="fileInputTake1" accept="image/*" capture="environment" style="display:none;" />
   <input type="file" id="fileInputUpload1" accept="image/*,.heif,.heic" style="display:none;" />
 
   <div class="photo2-trigger" id="photo2Trigger" onclick="showZone2()">📄 + Add second photo for long receipts</div>
@@ -134,7 +134,7 @@
       </div>
       <div class="success-msg"><div class="success-icon">✅</div><div class="success-text">Photo 2 ready!</div></div>
     </div>
-    <input type="file" id="fileInputTake2" accept="image/*" style="display:none;" />
+    <input type="file" id="fileInputTake2" accept="image/*" capture="environment" style="display:none;" />
     <input type="file" id="fileInputUpload2" accept="image/*,.heif,.heic" style="display:none;" />
   </div>
 
@@ -312,30 +312,33 @@ async function scanReceipt() {
   setStatus('Reading receipt...', 'info');
   document.getElementById('resultsCard').style.display = 'none';
   try {
-    const content = [];
-    content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
-    if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    content.push({ type: 'text', text: `You are a receipt scanner. Study every character on this receipt extremely carefully before responding. Respond ONLY with a valid JSON object — no explanation, no markdown.
-
-Rules:
-- store_name: read the store name character by character from the receipt exactly as printed
-- date: find the calendar date in YYYY-MM-DD format, ignore any times like 10:34 AM
-- total: find the single final GRAND TOTAL or TOTAL DUE — NOT subtotal, NOT tax — number only, no $ sign
-- category: based on items purchased choose from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other
-- items: list up to 5 main items, read each product name letter by letter exactly as printed, do not guess spellings
-
-Use empty string for any missing fields. Return JSON only.` });
-
-    setStatus('Extracting details...', 'info');
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content }] })
-    });
-    const data = await resp.json();
-    if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
-    const text = data.content.map(b => b.text || '').join('');
-    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    let parsed;
+    if (cfg.serverUrl) {
+      setStatus('Sending to server...', 'info');
+      const resp = await fetch(cfg.serverUrl + '/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images, mimeTypes })
+      });
+      if (!resp.ok) throw new Error('Server error: ' + resp.status);
+      parsed = await resp.json();
+      if (parsed.error) throw new Error(parsed.error);
+    } else {
+      const content = [];
+      content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
+      if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
+      content.push({ type: 'text', text: 'Respond ONLY with valid JSON. Fields: store_name, date (YYYY-MM-DD), total (GRAND TOTAL number only no $), category (Groceries/Restaurant/Gas/Electronics/Clothing/Meals & Entertainment/Supplies/Other), items (up to 5). Empty string if missing.' });
+      setStatus('Extracting details...', 'info');
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content }] })
+      });
+      const data = await resp.json();
+      if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
+      const text = data.content.map(b => b.text || '').join('');
+      parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    }
     showResults(parsed);
     setStatus('Receipt scanned! Review below then save.', 'success');
     setTimeout(() => {
