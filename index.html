@@ -307,7 +307,7 @@ function setStatus(msg, type) {
 async function scanReceipt() {
   if (!images[0]) return;
   const cfg = getSettings();
-  if (!cfg.anthropicKey) { setStatus('Add your Anthropic API key in Settings first.', 'error'); return; }
+  if (!cfg.serverUrl && !cfg.anthropicKey) { setStatus('Add your Anthropic API key in Settings first.', 'error'); return; }
   document.getElementById('scanBtn').disabled = true;
   setStatus('Reading receipt...', 'info');
   document.getElementById('resultsCard').style.display = 'none';
