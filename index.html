@@ -376,12 +376,13 @@ async function saveToSheets() {
     try { accessToken = await getGoogleToken(cfg.googleClientId); setCachedToken(accessToken); }
     catch(e) { setStatus('Google sign-in failed.', 'error'); document.getElementById('saveBtn').disabled = false; return; }
   }
+  const sheetId = await getOrCreateSheet(accessToken);
   const d = getEditedData();
   const row = [d.date, d.store_name, d.category, '$' + d.total, d.items];
   setStatus('Saving...', 'info');
   try {
-    await ensureHeader(accessToken, cfg.sheetId);
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
+    await ensureHeader(accessToken, sheetId);
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ values: [row] })
@@ -426,7 +427,7 @@ function getGoogleToken(clientId) {
     if (typeof google === 'undefined') { reject(new Error('Google API not loaded')); return; }
     const client = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
       callback: (response) => {
         if (response.error) { reject(new Error(response.error)); return; }
         resolve(response.access_token);
@@ -435,6 +436,23 @@ function getGoogleToken(clientId) {
     client.requestAccessToken({});
   });
 }
+
+async function getOrCreateSheet(token) {
+  const saved = localStorage.getItem('sheetId');
+  if (saved) return saved;
+
+  setStatus('Setting up your personal sheet...', 'info');
+  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties: { title: 'My Receipts' }, sheets: [{ properties: { title: 'Sheet1' } }] })
+  });
+  const data = await res.json();
+  if (!data.spreadsheetId) throw new Error('Could not create sheet');
+  localStorage.setItem('sheetId', data.spreadsheetId);
+  return data.spreadsheetId;
+}
+
 function resetApp() {
   images = [null, null];
   [1,2].forEach(n => {
