@@ -370,32 +370,19 @@ function getEditedData() {
 async function saveToSheets() {
   const cfg = getSettings();
   document.getElementById('saveBtn').disabled = true;
-  setStatus('Connecting to Google...', 'info');
-  if (!accessToken) accessToken = getCachedToken();
-  if (!accessToken) {
-    try { accessToken = await getGoogleToken(cfg.googleClientId); setCachedToken(accessToken); }
-    catch(e) { setStatus('Google sign-in failed.', 'error'); document.getElementById('saveBtn').disabled = false; return; }
-  }
-  const sheetId = await getOrCreateSheet(accessToken, cfg.serverUrl);
+  if (!cfg.sheetId) { setStatus('Please add your Google Sheet ID in Settings first.', 'error'); document.getElementById('saveBtn').disabled = false; return; }
   const d = getEditedData();
   const row = [d.date, d.store_name, d.category, '$' + d.total, d.items];
   setStatus('Saving...', 'info');
   try {
-    await ensureHeader(accessToken, sheetId);
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
+    const res = await fetch(cfg.serverUrl + '/append-row', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: [row] })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId: cfg.sheetId, row })
     });
-    if (res.status === 401) {
-      accessToken = null; sessionStorage.removeItem('gToken'); sessionStorage.removeItem('gTokenExp');
-      accessToken = await getGoogleToken(cfg.googleClientId); setCachedToken(accessToken);
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/Sheet1!A:E:append?valueInputOption=USER_ENTERED`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: [row] })
-      });
-    } else if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
     document.getElementById('saveBtn').disabled = false;
     document.getElementById('saveOverlay').classList.add('show');
     document.getElementById('savePopup').classList.add('show');
