@@ -276,7 +276,7 @@ function processFile(file, num) {
     img.onload = function() {
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
-      const maxDim = 2000;
+      const maxDim = 3000;
       if (w > maxDim || h > maxDim) {
         if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
         else { w = Math.round(w * maxDim / h); h = maxDim; }
@@ -340,7 +340,8 @@ async function scanReceipt() {
       parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     }
     showResults(parsed);
-    setStatus('Receipt scanned! Review below then save.', 'success');
+    const itemsEmpty = !parsed.items || parsed.items.trim() === '';
+    setStatus(itemsEmpty ? '⚠️ Items came up empty — try a closer photo and scan again.' : 'Receipt scanned! Review below then save.', itemsEmpty ? 'error' : 'success');
     setTimeout(() => {
       document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
