@@ -80,7 +80,8 @@
 
 <div class="setup-section" id="setupSection">
   <h2>⚙️ Settings</h2>
-  <div class="setup-field"><label>Anthropic API Key</label><input type="password" id="anthropicKey" placeholder="sk-ant-..." /></div>
+  <div class="setup-field"><label>Server URL</label><input type="text" id="serverUrl" placeholder="https://xxx.trycloudflare.com" /></div>
+  <div class="setup-field"><label>Anthropic API Key (not needed with server)</label><input type="password" id="anthropicKey" placeholder="sk-ant-..." /></div>
   <div class="setup-field"><label>Google Vision API Key</label><input type="password" id="visionKey" placeholder="AIza..." /></div>
   <div class="setup-field"><label>Google Client ID</label><input type="text" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" /></div>
   <div class="setup-field"><label>Google Sheet ID</label><input type="text" id="sheetId" placeholder="Sheet ID from the URL" /></div>
@@ -230,13 +231,15 @@ function setCachedToken(token) {
 }
 function getSettings() {
   return {
+    serverUrl: localStorage.getItem('serverUrl') || 'https://pittsburgh-oaks-enabling-champagne.trycloudflare.com',
     anthropicKey: localStorage.getItem('anthropicKey') || '',
-    visionKey: localStorage.getItem('visionKey') || 'AIzaSyAUI0mtKxFXWxOOsQn68vR_uLltF_rCyd4',
+    visionKey: localStorage.getItem('visionKey') || '',
     googleClientId: localStorage.getItem('googleClientId') || '908806406436-mu9loij0v1d8e4rav7m45jp2gft782nu.apps.googleusercontent.com',
     sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
   };
 }
 function saveSettings() {
+  localStorage.setItem('serverUrl', document.getElementById('serverUrl').value.trim());
   localStorage.setItem('anthropicKey', document.getElementById('anthropicKey').value.trim());
   localStorage.setItem('visionKey', document.getElementById('visionKey').value.trim());
   localStorage.setItem('googleClientId', document.getElementById('googleClientId').value.trim());
@@ -249,6 +252,7 @@ function toggleSetup() {
   const visible = s.style.display === 'block';
   if (!visible) {
     const cfg = getSettings();
+    document.getElementById('serverUrl').value = cfg.serverUrl;
     document.getElementById('anthropicKey').value = cfg.anthropicKey;
     document.getElementById('visionKey').value = cfg.visionKey;
     document.getElementById('googleClientId').value = cfg.googleClientId;
@@ -300,15 +304,6 @@ function setStatus(msg, type) {
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
-async function extractTextVision(base64, visionKey) {
-  const resp = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requests: [{ image: { content: base64 }, features: [{ type: 'TEXT_DETECTION' }] }] })
-  });
-  const data = await resp.json();
-  return data.responses?.[0]?.fullTextAnnotation?.text || '';
-}
 async function scanReceipt() {
   if (!images[0]) return;
   const cfg = getSettings();
@@ -317,24 +312,20 @@ async function scanReceipt() {
   setStatus('Reading receipt...', 'info');
   document.getElementById('resultsCard').style.display = 'none';
   try {
-    let receiptText = '';
-    if (cfg.visionKey) {
-      try {
-        const text1 = await extractTextVision(images[0], cfg.visionKey);
-        const text2 = images[1] ? await extractTextVision(images[1], cfg.visionKey) : '';
-        receiptText = text1 + (text2 ? '\n' + text2 : '');
-      } catch(ve) { receiptText = ''; }
-    }
     const content = [];
-    // Always send image to Anthropic - use Vision text as extra context if available
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[0], data: images[0] } });
     if (images[1]) content.push({ type: 'image', source: { type: 'base64', media_type: mimeTypes[1], data: images[1] } });
-    const visionContext = receiptText ? `\n\nTHE FOLLOWING IS THE EXACT TEXT FROM THE RECEIPT - THIS IS YOUR ONLY SOURCE OF TRUTH. Do not use the image for spelling. Copy every store name, product name, brand name, and number EXACTLY character by character from this text:\n\n${receiptText}\n\nDo NOT guess or interpret - only use what is written above.` : '';
-    const promptText = receiptText
-      ? `You are a data extractor. Extract fields from the receipt text below. Respond ONLY with valid JSON, no explanation. CRITICAL: Copy all text EXACTLY as written - do not correct, guess, or change any spelling. Fields: store_name (exact name), date (YYYY-MM-DD only, ignore times like 10:34), total (final GRAND TOTAL number only, no $, not subtotal or tax), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other - based on items), items (up to 5 main items copied EXACTLY as written). Use empty string if not found.${visionContext}`
-      : `Look at this receipt image. Respond ONLY with valid JSON. Fields: store_name, date (YYYY-MM-DD only), total (GRAND TOTAL number only, no $), category (from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other), items (up to 5 items). Use empty string if not found.`;
-    content.push({ type: 'text', text: promptText });
-    console.log('Sending to Anthropic:', promptText.substring(0, 200));
+    content.push({ type: 'text', text: `You are a receipt scanner. Study every character on this receipt extremely carefully before responding. Respond ONLY with a valid JSON object — no explanation, no markdown.
+
+Rules:
+- store_name: read the store name character by character from the receipt exactly as printed
+- date: find the calendar date in YYYY-MM-DD format, ignore any times like 10:34 AM
+- total: find the single final GRAND TOTAL or TOTAL DUE — NOT subtotal, NOT tax — number only, no $ sign
+- category: based on items purchased choose from: Groceries, Restaurant, Gas, Electronics, Clothing, Meals & Entertainment, Supplies, or Other
+- items: list up to 5 main items, read each product name letter by letter exactly as printed, do not guess spellings
+
+Use empty string for any missing fields. Return JSON only.` });
+
     setStatus('Extracting details...', 'info');
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -344,7 +335,6 @@ async function scanReceipt() {
     const data = await resp.json();
     if (!data.content) throw new Error(data.error?.message || JSON.stringify(data));
     const text = data.content.map(b => b.text || '').join('');
-    console.log('Anthropic raw response:', text);
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     showResults(parsed);
     setStatus('Receipt scanned! Review below then save.', 'success');
@@ -356,6 +346,7 @@ async function scanReceipt() {
     document.getElementById('scanBtn').disabled = false;
   }
 }
+
 function showResults(data) {
   const container = document.getElementById('fieldsContainer');
   container.innerHTML = '';
