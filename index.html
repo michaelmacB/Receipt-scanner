@@ -232,10 +232,11 @@ function setCachedToken(token) {
 function getSettings() {
   return {
     serverUrl: localStorage.getItem('serverUrl') || 'https://unexclusively-intracranial-alise.ngrok-free.dev',
+    appToken: localStorage.getItem('appToken') || 'rscanner2024secure',
     anthropicKey: localStorage.getItem('anthropicKey') || '',
     visionKey: localStorage.getItem('visionKey') || '',
-    googleClientId: localStorage.getItem('googleClientId') || '908806406436-mu9loij0v1d8e4rav7m45jp2gft782nu.apps.googleusercontent.com',
-    sheetId: localStorage.getItem('sheetId') || '1Af0whZ7pxgLh75y9NRN4amXLIzHEorILykqx_dCnmGk',
+    googleClientId: localStorage.getItem('googleClientId') || '',
+    sheetId: localStorage.getItem('sheetId') || '',
   };
 }
 function saveSettings() {
@@ -318,7 +319,7 @@ async function scanReceipt() {
       const resp = await fetch(cfg.serverUrl + '/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images, mimeTypes })
+        body: JSON.stringify({ images, mimeTypes, token: cfg.appToken })
       });
       if (!resp.ok) throw new Error('Server error: ' + resp.status);
       parsed = await resp.json();
@@ -378,7 +379,7 @@ async function saveToSheets() {
     const res = await fetch(cfg.serverUrl + '/append-row', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sheetId: cfg.sheetId, row })
+      body: JSON.stringify({ sheetId: cfg.sheetId, row, token: cfg.appToken })
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
